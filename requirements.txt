@@ -1,0 +1,57 @@
+# 🔹 Backend Framework
+fastapi
+uvicorn[standard]
+
+# 🔹 Data Validation
+pydantic
+pydantic-settings
+
+# 🔹 Database
+sqlalchemy
+psycopg2-binary
+alembic
+pymongo
+
+# 🔹 Data Science / Matching Engine
+numpy
+pandas
+scikit-learn
+scipy
+
+# 🔹 Async & Performance
+asyncpg
+
+# 🔹 Authentication & Security
+python-jose[cryptography]
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+# 🔹 Environment Variables
+python-dotenv
+
+# 🔹 API Utilities
+httpx
+
+# 🔹 Logging
+loguru
+
+# 🔹 Real-time (optional - Phase 3)
+websockets
+
+# 🔹 Background Tasks (optional - Phase 3)
+celery
+redis
+
+# 🔹 File Handling
+python-multipart
+
+# 🔹 Testing (Dev)
+pytest
+pytest-asyncio
+
+# 🔹 Code Quality (Dev)
+black
+flake8
+isort
+
+email-validator

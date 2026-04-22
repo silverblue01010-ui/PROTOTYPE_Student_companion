@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Study Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0e1a;
+      --surface:   #111827;
+      --card:      #161e30;
+      --border:    #1f2d47;
+      --accent:    #4f8ef7;
+      --accent2:   #7c3aed;
+      --green:     #10b981;
+      --red:       #ef4444;
+      --yellow:    #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    14px;
+      --shadow:    0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ═══════════════════════════
+       PAGES
+    ═══════════════════════════ */
+    .page { display: none; min-height: 100vh; position: relative; z-index: 1; }
+    .page.active { display: flex; flex-direction: column; }
+
+    /* ═══════════════════════════
+       AUTH PAGE
+    ═══════════════════════════ */
+    #auth-page {
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(ellipse at 30% 20%, rgba(79,142,247,0.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, rgba(124,58,237,0.10) 0%, transparent 60%);
+    }
+
+    .auth-box {
+      width: 100%; max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: var(--shadow);
+      animation: slideUp 0.5s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .auth-logo span { color: var(--accent2); }
+
+    .auth-subtitle { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+
+    .tab-row {
+      display: flex;
+      background: var(--card);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      flex: 1; padding: 9px;
+      background: transparent;
+      border: none; border-radius: 8px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .form-group { margin-bottom: 16px; }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group textarea {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus, .form-group textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .form-group textarea { resize: vertical; min-height: 72px; }
+
+    .tag-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none; border-radius: 10px;
+      padding: 13px;
+      font-family: 'Syne', sans-serif;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      margin-top: 8px;
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .auth-error {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fca5a5;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* ═══════════════════════════
+       APP SHELL
+    ═══════════════════════════ */
+    #app-page { flex-direction: row; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 240px; min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 28px 0;
+      position: sticky; top: 0;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px; font-weight: 800;
+      color: var(--accent);
+      padding: 0 24px;
+      margin-bottom: 36px;
+      letter-spacing: -0.5px;
+    }
+
+    .sidebar-logo span { color: var(--accent2); }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 24px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px; font-weight: 500;
+      border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+
+    .nav-item.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(79,142,247,0.06);
+    }
+
+    .nav-icon { font-size: 18px; }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 0 16px;
+    }
+
+    .user-chip {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+
+    .user-avatar {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 13px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-chip-name {
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .btn-logout {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover { color: var(--red); border-color: var(--red); }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1;
+      padding: 40px 40px;
+      overflow-y: auto;
+    }
+
+    /* VIEWS */
+    .view { display: none; animation: fadeIn 0.3s ease; }
+    .view.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ═══════════════════════════
+       SECTION HEADINGS
+    ═══════════════════════════ */
+    .view-header { margin-bottom: 32px; }
+
+    .view-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px; font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .view-desc { color: var(--muted); font-size: 15px; }
+
+    /* ═══════════════════════════
+       DASHBOARD
+    ═══════════════════════════ */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--accent); }
+
+    .stat-label {
+      font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .stat-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 32px; font-weight: 800;
+    }
+
+    .stat-val.blue  { color: var(--accent); }
+    .stat-val.purple { color: var(--accent2); }
+    .stat-val.green  { color: var(--green); }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px; font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    /* SKILLS / TAGS */
+    .tag {
+      display: inline-block;
+      background: rgba(79,142,247,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(79,142,247,0.25);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px; font-weight: 500;
+      margin: 3px;
+    }
+
+    .tag.interest {
+      background: rgba(124,58,237,0.12);
+      color: #a78bfa;
+      border-color: rgba(124,58,237,0.25);
+    }
+
+    .profile-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .profile-top {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .profile-avatar {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 20px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .profile-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px; font-weight: 700;
+    }
+
+    .profile-email { color: var(--muted); font-size: 14px; }
+
+    /* ═══════════════════════════
+       MATCHES
+    ═══════════════════════════ */
+    .matches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .match-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: transform 0.2s, border-color 0.2s;
+      cursor: default;
+    }
+
+    .match-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+
+    .match-top {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .match-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 16px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .match-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px; font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .match-email { color: var(--muted); font-size: 12px; }
+
+    .score-bar-wrap { margin: 14px 0 10px; }
+
+    .score-label {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .score-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      transition: width 0.8s ease;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .no-data-icon { font-size: 48px; margin-bottom: 12px; }
+    .no-data-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+
+    /* ═══════════════════════════
+       SESSIONS
+    ═══════════════════════════ */
+    .sessions-toolbar {
+      display: flex; gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .input-inline {
+      flex: 1; min-width: 180px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .input-inline:focus { border-color: var(--accent); }
+
+    .btn-sm {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none; border-radius: 10px;
+      padding: 11px 20px;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-sm:hover { opacity: 0.88; }
+    .btn-sm.outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-sm.outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.danger {
+      background: transparent;
+      border: 1px solid rgba(239,68,68,0.4);
+      color: var(--red);
+    }
+    .btn-sm.danger:hover { background: rgba(239,68,68,0.08); }
+
+    .session-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .session-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex; align-items: center; gap: 16px;
+    }
+
+    .session-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .session-info { flex: 1; }
+
+    .session-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px; font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .session-meta { color: var(--muted); font-size: 13px; }
+
+    .session-actions { display: flex; gap: 8px; }
+
+    /* ═══════════════════════════
+       PROFILE EDIT
+    ═══════════════════════════ */
+    .profile-form {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      max-width: 560px;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .btn-save {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none; border-radius: 10px;
+      padding: 12px 28px;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn-save:hover { opacity: 0.9; }
+
+    /* ═══════════════════════════
+       TOAST
+    ═══════════════════════════ */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      color: var(--text);
+      font-size: 14px;
+      box-shadow: var(--shadow);
+      z-index: 9999;
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.3s ease;
+      max-width: 320px;
+    }
+
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--green); color: #6ee7b7; }
+    #toast.error   { border-color: var(--red);   color: #fca5a5; }
+
+    /* ═══════════════════════════
+       SPINNER
+    ═══════════════════════════ */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════
+       LOADING OVERLAY
+    ═══════════════════════════ */
+    .loading-row {
+      display: flex; gap: 14px;
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--card) 25%, var(--border) 50%, var(--card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 8px;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { padding: 20px; }
+      .stats-row { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════
+     AUTH PAGE
+═══════════════════════════════ -->
+<div id="auth-page" class="page active">
+  <div class="auth-box">
+    <div class="auth-logo">Study<span>Sync</span></div>
+    <p class="auth-subtitle">Find your perfect study partner.</p>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+      <button class="tab-btn" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn-primary" id="login-btn" onclick="doLogin()">Login</button>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="reg-name" placeholder="Ada Lovelace" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="Min 6 characters" />
+      </div>
+      <div class="form-group">
+        <label>Skills</label>
+        <input type="text" id="reg-skills" placeholder="Python, Math, Physics" />
+        <p class="tag-hint">Comma-separated</p>
+      </div>
+      <div class="form-group">
+        <label>Interests</label>
+        <input type="text" id="reg-interests" placeholder="AI, Music, Chess" />
+        <p class="tag-hint">Comma-separated</p>
+      </div>
+      <div class="form-group">
+        <label>Bio</label>
+        <textarea id="reg-bio" placeholder="Tell study partners about yourself..."></textarea>
+      </div>
+      <button class="btn-primary" id="register-btn" onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     APP PAGE
+═══════════════════════════════ -->
+<div id="app-page" class="page">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">Study<span>Sync</span></div>
+
+    <nav>
+      <div class="nav-item active" onclick="showView('dashboard')">
+        <span class="nav-icon">⊞</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showView('matches')">
+        <span class="nav-icon">◈</span> Matches
+      </div>
+      <div class="nav-item" onclick="showView('sessions')">
+        <span class="nav-icon">◎</span> Sessions
+      </div>
+      <div class="nav-item" onclick="showView('profile')">
+        <span class="nav-icon">◉</span> Profile
+      </div>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div class="user-chip-name" id="sidebar-name">Loading...</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="view-dashboard" class="view active">
+      <div class="view-header">
+        <div class="view-title">Dashboard</div>
+        <div class="view-desc">Welcome back! Here's your study overview.</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Skill Tags</div>
+          <div class="stat-val blue" id="stat-skills">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Matches Found</div>
+          <div class="stat-val purple" id="stat-matches">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Sessions</div>
+          <div class="stat-val green" id="stat-sessions">—</div>
+        </div>
+      </div>
+
+      <div class="section-title">Your Profile Snapshot</div>
+      <div class="profile-card" id="dash-profile-card">
+        <div style="color:var(--muted)">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ── MATCHES ── -->
+    <div id="view-matches" class="view">
+      <div class="view-header">
+        <div class="view-title">Study Matches</div>
+        <div class="view-desc">People with overlapping skills and interests.</div>
+      </div>
+      <div id="matches-container" class="matches-grid">
+        <div style="color:var(--muted)">Loading matches...</div>
+      </div>
+    </div>
+
+    <!-- ── SESSIONS ── -->
+    <div id="view-sessions" class="view">
+      <div class="view-header">
+        <div class="view-title">Study Sessions</div>
+        <div class="view-desc">Create or join live study rooms.</div>
+      </div>
+      <div class="sessions-toolbar">
+        <input class="input-inline" id="room-name-input" placeholder="Enter room name…" />
+        <button class="btn-sm" onclick="createSession()">+ Create Room</button>
+        <button class="btn-sm outline" onclick="loadSessions()">↻ Refresh</button>
+      </div>
+      <div id="sessions-container" class="session-list">
+        <div style="color:var(--muted)">Loading sessions...</div>
+      </div>
+    </div>
+
+    <!-- ── PROFILE ── -->
+    <div id="view-profile" class="view">
+      <div class="view-header">
+        <div class="view-title">My Profile</div>
+        <div class="view-desc">Update your info to get better matches.</div>
+      </div>
+      <div class="profile-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="p-name" />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="p-email" disabled style="opacity:0.5;cursor:not-allowed" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Skills</label>
+          <input type="text" id="p-skills" placeholder="Python, Math, Physics" />
+          <p class="tag-hint">Comma-separated</p>
+        </div>
+        <div class="form-group">
+          <label>Interests</label>
+          <input type="text" id="p-interests" placeholder="AI, Music, Chess" />
+          <p class="tag-hint">Comma-separated</p>
+        </div>
+        <div class="form-group">
+          <label>Bio</label>
+          <textarea id="p-bio"></textarea>
+        </div>
+        <button class="btn-save" onclick="saveProfile()">Save Changes</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+  // ═══════════════════════════════════════
+  //  CONFIG
+  // ═══════════════════════════════════════
+  const API = 'http://localhost:8000/api';
+
+  // ═══════════════════════════════════════
+  //  STATE
+  // ═══════════════════════════════════════
+  let token = localStorage.getItem('ssc_token') || null;
+  let currentUser = null;
+
+  // ═══════════════════════════════════════
+  //  INIT
+  // ═══════════════════════════════════════
+  (async () => {
+    if (token) {
+      try {
+        await loadMe();
+        showApp();
+      } catch {
+        token = null;
+        localStorage.removeItem('ssc_token');
+      }
+    }
+  })();
+
+  // ═══════════════════════════════════════
+  //  AUTH HELPERS
+  // ═══════════════════════════════════════
+  function switchTab(tab) {
+    document.getElementById('login-form').style.display    = tab === 'login' ? 'block' : 'none';
+    document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+    });
+    hideAuthError();
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideAuthError() {
+    document.getElementById('auth-error').style.display = 'none';
+  }
+
+  async function doLogin() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return showAuthError('Please fill in all fields.');
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      const res = await fetch(`${API}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Login failed');
+
+      token = data.access_token;
+      localStorage.setItem('ssc_token', token);
+      await loadMe();
+      showApp();
+    } catch (e) {
+      showAuthError(e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Login';
+    }
+  }
+
+  async function doRegister() {
+    const name      = document.getElementById('reg-name').value.trim();
+    const email     = document.getElementById('reg-email').value.trim();
+    const password  = document.getElementById('reg-password').value;
+    const skills    = document.getElementById('reg-skills').value.split(',').map(s => s.trim()).filter(Boolean);
+    const interests = document.getElementById('reg-interests').value.split(',').map(s => s.trim()).filter(Boolean);
+    const bio       = document.getElementById('reg-bio').value.trim();
+
+    if (!name || !email || !password) return showAuthError('Name, email, and password are required.');
+
+    const btn = document.getElementById('register-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      const res = await fetch(`${API}/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, skills, interests, bio })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Registration failed');
+
+      toast('Account created! Please login.', 'success');
+      switchTab('login');
+      document.getElementById('login-email').value = email;
+    } catch (e) {
+      showAuthError(e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+    }
+  }
+
+  function doLogout() {
+    token = null;
+    currentUser = null;
+    localStorage.removeItem('ssc_token');
+    document.getElementById('auth-page').classList.add('active');
+    document.getElementById('app-page').classList.remove('active');
+    switchTab('login');
+  }
+
+  // ═══════════════════════════════════════
+  //  APP INIT
+  // ═══════════════════════════════════════
+  async function showApp() {
+    document.getElementById('auth-page').classList.remove('active');
+    document.getElementById('app-page').classList.add('active');
+    populateSidebar();
+    renderDashboard();
+    loadSessions();
+    populateProfileForm();
+  }
+
+  async function loadMe() {
+    const res = await apiFetch('/users/me');
+    currentUser = await res.json();
+  }
+
+  function populateSidebar() {
+    if (!currentUser) return;
+    document.getElementById('sidebar-name').textContent = currentUser.name;
+    document.getElementById('sidebar-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+  }
+
+  // ═══════════════════════════════════════
+  //  VIEWS
+  // ═══════════════════════════════════════
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.textContent.trim().toLowerCase().includes(name)) n.classList.add('active');
+    });
+
+    if (name === 'matches') loadMatches();
+    if (name === 'sessions') loadSessions();
+    if (name === 'profile') populateProfileForm();
+    if (name === 'dashboard') renderDashboard();
+  }
+
+  // ═══════════════════════════════════════
+  //  DASHBOARD
+  // ═══════════════════════════════════════
+  async function renderDashboard() {
+    if (!currentUser) return;
+
+    document.getElementById('stat-skills').textContent  = currentUser.skills?.length || 0;
+
+    // Get matches count
+    try {
+      const r = await apiFetch('/matches/');
+      const d = await r.json();
+      document.getElementById('stat-matches').textContent = d.matches?.length ?? '—';
+    } catch { document.getElementById('stat-matches').textContent = '—'; }
+
+    // Get sessions count
+    try {
+      const r = await fetch(`${API}/sessions/active`);
+      const d = await r.json();
+      document.getElementById('stat-sessions').textContent = Array.isArray(d) ? d.length : '—';
+    } catch { document.getElementById('stat-sessions').textContent = '—'; }
+
+    // Profile snapshot
+    const card = document.getElementById('dash-profile-card');
+    card.innerHTML = `
+      <div class="profile-top">
+        <div class="profile-avatar">${currentUser.name.charAt(0).toUpperCase()}</div>
+        <div>
+          <div class="profile-name">${esc(currentUser.name)}</div>
+          <div class="profile-email">${esc(currentUser.email)}</div>
+        </div>
+      </div>
+      ${currentUser.bio ? `<p style="color:var(--muted);font-size:14px;margin-bottom:14px">${esc(currentUser.bio)}</p>` : ''}
+      <div style="margin-bottom:10px">
+        <div class="section-title" style="font-size:13px;margin-bottom:8px">Skills</div>
+        ${(currentUser.skills || []).map(s => `<span class="tag">${esc(s)}</span>`).join('') || '<span style="color:var(--muted);font-size:13px">None added yet</span>'}
+      </div>
+      <div>
+        <div class="section-title" style="font-size:13px;margin-bottom:8px">Interests</div>
+        ${(currentUser.interests || []).map(i => `<span class="tag interest">${esc(i)}</span>`).join('') || '<span style="color:var(--muted);font-size:13px">None added yet</span>'}
+      </div>
+    `;
+  }
+
+  // ═══════════════════════════════════════
+  //  MATCHES
+  // ═══════════════════════════════════════
+  const AVATAR_COLORS = [
+    ['#4f8ef7','#7c3aed'], ['#10b981','#4f8ef7'], ['#f59e0b','#ef4444'],
+    ['#ec4899','#7c3aed'], ['#06b6d4','#10b981']
+  ];
+
+  async function loadMatches() {
+    const container = document.getElementById('matches-container');
+    container.innerHTML = '<div style="color:var(--muted)">Loading…</div>';
+
+    try {
+      const r = await apiFetch('/matches/');
+      const d = await r.json();
+      const matches = d.matches || [];
+
+      if (!matches.length) {
+        container.innerHTML = `
+          <div class="no-data" style="grid-column:1/-1">
+            <div class="no-data-icon">◈</div>
+            <div class="no-data-title">No matches yet</div>
+            <p>Add more skills and interests to your profile to find study partners.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      matches.forEach((m, idx) => {
+        const [c1, c2] = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+        const pct = Math.round((m.score || 0) * 100);
+        const card = document.createElement('div');
+        card.className = 'match-card';
+        card.innerHTML = `
+          <div class="match-top">
+            <div class="match-avatar" style="background:linear-gradient(135deg,${c1},${c2})">${m.name.charAt(0).toUpperCase()}</div>
+            <div>
+              <div class="match-name">${esc(m.name)}</div>
+              <div class="match-email">${esc(m.email)}</div>
+            </div>
+          </div>
+          ${m.bio ? `<p style="color:var(--muted);font-size:13px;margin-bottom:10px">${esc(m.bio)}</p>` : ''}
+          <div>
+            ${(m.skills || []).slice(0,4).map(s => `<span class="tag">${esc(s)}</span>`).join('')}
+            ${(m.interests || []).slice(0,3).map(i => `<span class="tag interest">${esc(i)}</span>`).join('')}
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-label"><span>Match Score</span><span>${pct}%</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    } catch (e) {
+      container.innerHTML = `<div style="color:var(--red)">Failed to load matches: ${e.message}</div>`;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  SESSIONS
+  // ═══════════════════════════════════════
+  async function loadSessions() {
+    const container = document.getElementById('sessions-container');
+    container.innerHTML = '<div style="color:var(--muted)">Loading…</div>';
+    try {
+      const res = await fetch(`${API}/sessions/active`);
+      const sessions = await res.json();
+
+      if (!sessions.length) {
+        container.innerHTML = `
+          <div class="no-data">
+            <div class="no-data-icon">◎</div>
+            <div class="no-data-title">No active sessions</div>
+            <p>Create a room to start studying with others.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      sessions.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'session-card';
+        div.innerHTML = `
+          <div class="session-dot"></div>
+          <div class="session-info">
+            <div class="session-name">${esc(s.room_name)}</div>
+            <div class="session-meta">Host: ${esc(s.host_id)} · ${s.participants?.length || 1} participant(s)</div>
+          </div>
+          <div class="session-actions">
+            <button class="btn-sm outline" onclick="joinSession('${s.id}')">Join</button>
+            <button class="btn-sm danger" onclick="endSession('${s.id}')">End</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    } catch (e) {
+      container.innerHTML = `<div style="color:var(--red)">Failed: ${e.message}</div>`;
+    }
+  }
+
+  async function createSession() {
+    const name = document.getElementById('room-name-input').value.trim();
+    if (!name) return toast('Enter a room name first.', 'error');
+    try {
+      const r = await apiFetch(`/sessions/create?room_name=${encodeURIComponent(name)}`, { method: 'POST' });
+      if (!r.ok) throw new Error((await r.json()).detail);
+      document.getElementById('room-name-input').value = '';
+      toast('Room created!', 'success');
+      loadSessions();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function joinSession(id) {
+    try {
+      await apiFetch(`/sessions/join?session_id=${id}`, { method: 'POST' });
+      toast('Joined session!', 'success');
+      loadSessions();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function endSession(id) {
+    try {
+      await apiFetch(`/sessions/end?session_id=${id}`, { method: 'POST' });
+      toast('Session ended.', 'success');
+      loadSessions();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ═══════════════════════════════════════
+  //  PROFILE
+  // ═══════════════════════════════════════
+  function populateProfileForm() {
+    if (!currentUser) return;
+    document.getElementById('p-name').value      = currentUser.name || '';
+    document.getElementById('p-email').value     = currentUser.email || '';
+    document.getElementById('p-skills').value    = (currentUser.skills || []).join(', ');
+    document.getElementById('p-interests').value = (currentUser.interests || []).join(', ');
+    document.getElementById('p-bio').value       = currentUser.bio || '';
+  }
+
+  async function saveProfile() {
+    const name      = document.getElementById('p-name').value.trim();
+    const skills    = document.getElementById('p-skills').value.split(',').map(s => s.trim()).filter(Boolean);
+    const interests = document.getElementById('p-interests').value.split(',').map(s => s.trim()).filter(Boolean);
+    const bio       = document.getElementById('p-bio').value.trim();
+
+    try {
+      const r = await apiFetch('/users/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, skills, interests, bio })
+      });
+      if (!r.ok) throw new Error((await r.json()).detail);
+      currentUser = await r.json();
+      populateSidebar();
+      toast('Profile updated!', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ═══════════════════════════════════════
+  //  UTILS
+  // ═══════════════════════════════════════
+  async function apiFetch(path, opts = {}) {
+    return fetch(`${API}${path}`, {
+      ...opts,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(opts.headers || {})
+      }
+    });
+  }
+
+  function esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  let toastTimer;
+  function toast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+  }
+
+  // Enter key on login/register
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (document.getElementById('register-form').style.display === 'block') doRegister();
+    else doLogin();
+  });
+</script>
+</body>
+</html>
